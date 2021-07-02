@@ -1,7 +1,6 @@
 import random
 from collections import deque
 
-import numpy as np
 import torch
 
 from game import Game
@@ -22,30 +21,8 @@ class Agent:
         self.epsilon = 0  # randomness
         self.gamma = 0.9  # discount rate
         self.memory = deque(maxlen=MAX_MEMORY)  # popleft()
-        self.model = Linear_QNet(8, 256, 5)
+        self.model = Linear_QNet(16, 256, 5)
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
-
-    def get_state(self, game):
-        position = game.position
-        point_l = Point(position.x - 20, position.y)
-        point_r = Point(position.x + 20, position.y)
-        point_u = Point(position.x, position.y - 20)
-        point_d = Point(position.x, position.y + 20)
-        state = [
-            # danger
-            game.is_collision(point_u),
-            game.is_collision(point_r),
-            game.is_collision(point_d),
-            game.is_collision(point_l),
-
-            # food location
-            game.food.y < game.position.y,  # food up
-            game.food.x > game.position.x,  # food right
-            game.food.y > game.position.y,  # food down
-            game.food.x < game.position.x,  # food left
-        ]
-
-        return np.array(state, dtype=int)
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
@@ -89,14 +66,14 @@ def train():
     game = Game()
     while True:
         # get old state
-        state_old = agent.get_state(game)
+        state_old = game.get_state()
 
         # get move
         final_move = agent.get_action(state_old)
 
         # perform move and get new state
         reward, done, score = game.play_step(final_move)
-        state_new = agent.get_state(game)
+        state_new = game.get_state()
 
         # train short memory
         agent.train_short_memory(state_old, final_move, reward, state_new, done)
@@ -114,7 +91,7 @@ def train():
                 record = score
                 agent.model.save()
 
-            print('Game', agent.n_games, 'Score', score, 'Record:', record)
+            print('Game', agent.n_games, 'Score', int(score), 'Record:', int(record))
 
             plot_scores.append(score)
             total_score += score
